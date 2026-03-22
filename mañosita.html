@@ -153,7 +153,7 @@
     <h1>Sopa de Letras 🤭</h1>
     <p class="subtitle">Encuentra las palabras escondidas</p>
 
-    <div id="loading">Cargando nuevas palabras desde el diccionario...</div>
+    <div id="loading">Cargando palabras poéticas...</div>
 
     <div id="game-container" style="display: none; flex-direction: column; align-items: center;">
         <div id="word-search"></div>
@@ -180,7 +180,7 @@
         let grid = [];
         let cellElements = [];
 
-       function buildWords(rawWords) {
+        function buildWords(rawWords) {
             const list = Array.isArray(rawWords) ? rawWords : [];
             const unique = new Set();
 
@@ -197,10 +197,10 @@
                     unique.add(word);
                     return true;
                 })
-                .slice(0, 5) // Toma 5 palabras de tu JSON
+                .slice(0, 5) // Toma 5 palabras aleatorias de tu JSON
                 .map(word => ({ word, meaning: 'Palabra poética', cells: [], found: false }));
 
-            // Siempre agregamos a Texia al final
+            // Siempre agregamos la palabra especial al final
             if (!unique.has('TEXIA')) {
                 processed.push({ word: 'TEXIA', meaning: 'Mi polola hermosa', cells: [], found: false });
             }
@@ -208,22 +208,24 @@
             return processed;
         }
 
-        // Función principal que lee tu archivo palabras.json
         async function initGame() {
             try {
-                // Truco: Agregamos un timestamp a la URL para evitar que el navegador guarde el archivo viejo en caché
+                // Hacemos el fetch a tu propio archivo JSON (con un parámetro para evitar el caché guardado)
                 const response = await fetch('palabras.json?v=' + new Date().getTime());
-                if (!response.ok) throw new Error("No se pudo cargar el JSON");
+                
+                if (!response.ok) {
+                    throw new Error("No se pudo cargar tu archivo palabras.json");
+                }
                 
                 const data = await response.json();
                 const miDiccionario = data.diccionario;
 
-                // Desordenamos tu lista y armamos el juego
+                // Mezclamos el diccionario para que salgan palabras distintas cada vez
                 const shuffled = miDiccionario.sort(() => 0.5 - Math.random());
                 words = buildWords(shuffled);
 
                 if (!words.length) {
-                    throw new Error("El archivo JSON está vacío o mal formateado");
+                    throw new Error("El archivo JSON está vacío o mal estructurado");
                 }
 
                 document.getElementById('loading').style.display = 'none';
@@ -232,7 +234,7 @@
 
             } catch (error) {
                 console.error("Error consultando la API local:", error);
-                document.getElementById('loading').textContent = "Hubo un error cargando las palabras. ¡Revisa tu archivo JSON!";
+                document.getElementById('loading').textContent = "Hubo un error cargando las palabras. Asegúrate de que palabras.json esté en GitHub.";
             }
         }
 
@@ -249,10 +251,6 @@
                 }
             });
             words = placedWords;
-
-            if (!words.length) {
-                throw new Error('No fue posible ubicar palabras en la grilla.');
-            }
 
             const letters = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
             for (let r = 0; r < gridSize; r++) {
