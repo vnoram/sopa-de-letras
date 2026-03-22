@@ -174,7 +174,9 @@
                 padding: 25px;
                 width: 80%;
             }
+            
         }
+        
     </style>
 </head>
 <body>
@@ -208,10 +210,17 @@
         let words = [];
         let grid = [];
         let cellElements = [];
+        // sonidos
+        const sonidoAcierto = new Audio('audios/sheck.mp3');
+        const sonidoVictoria = new Audio('audios/win.mp3');
 
         function buildWords(rawWords) {
             const list = Array.isArray(rawWords) ? rawWords : [];
             const unique = new Set();
+
+            // efecttos de sonido
+            const sonidoAcierto = new Audio('acierto.mp3');
+            const sonidoVictoria = new Audio('victoria.mp3');
 
             const processed = list
                 // Filtramos para asegurarnos de que el JSON nos entregue objetos con "palabra" y "significado"
@@ -397,6 +406,7 @@
 
                 if (allSelected) {
                     w.found = true;
+                    sonidoAcierto.play().catch(e => console.log("Audio bloqueado temporalmente"));
                     document.getElementById(`word-li-${index}`).classList.add('found-word');
                     
                     w.cells.forEach(pos => {
@@ -409,6 +419,7 @@
             });
 
             if (allFound) {
+                sonidoVictoria.play().catch(e => console.log("Audio bloqueado temporalmente"));
                 setTimeout(() => { document.getElementById('win-modal').style.display = 'flex'; }, 400);
             }
         }
