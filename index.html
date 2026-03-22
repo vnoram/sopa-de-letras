@@ -146,6 +146,32 @@
             0% { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
+        /* --- ADAPTACIÓN PARA CELULARES (DISEÑO RESPONSIVO) --- */
+        @media (max-width: 500px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            #word-search {
+                /* Achicamos las celdas de 35px a 26px para que quepan en la pantalla */
+                grid-template-columns: repeat(12, 26px);
+                grid-template-rows: repeat(12, 26px);
+                gap: 1px; /* Menos espacio entre los cuadritos */
+            }
+            .cell {
+                font-size: 1rem; /* Letra un poquito más pequeña */
+            }
+            .word-list-container {
+                min-width: 90%;
+                padding: 10px;
+            }
+            li {
+                font-size: 0.95rem; /* Achicamos el texto de los significados */
+            }
+            .modal-content {
+                padding: 25px;
+                width: 80%;
+            }
+        }
     </style>
 </head>
 <body>
