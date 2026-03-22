@@ -179,7 +179,6 @@
         let words = [];
         let grid = [];
         let cellElements = [];
-        const fallbackWords = ["CARIÑO", "ABRAZO", "RISA", "FELIZ", "BESO", "LUNA"];
 
         function buildWords(rawWords) {
             const list = Array.isArray(rawWords) ? rawWords : [];
@@ -198,8 +197,8 @@
                     unique.add(word);
                     return true;
                 })
-                .slice(0, 6)
-                .map(word => ({ word, meaning: 'Diccionario', cells: [], found: false }));
+                .slice(0, 5) // Toma 5 palabras de tu JSON
+                .map(word => ({ word, meaning: 'Palabra poética', cells: [], found: false }));
 
             if (!unique.has('TEXIA')) {
                 processed.push({ word: 'TEXIA', meaning: 'Mi polola hermosa', cells: [], found: false });
@@ -208,37 +207,31 @@
             return processed;
         }
 
-        // Función principal para iniciar el juego consultando la API en español
+        // Función principal que lee tu archivo palabras.json
         async function initGame() {
-            let sourceWords = fallbackWords;
-
             try {
-                const response = await fetch('https://clientes.api.greenborn.com.ar/public-random-word?c=5');
-                if (!response.ok) {
-                    throw new Error(`Respuesta no válida: ${response.status}`);
+                // Truco: Agregamos un timestamp a la URL para evitar que el navegador guarde el archivo viejo en caché
+                const response = await fetch('palabras.json?v=' + new Date().getTime());
+                if (!response.ok) throw new Error("No se pudo cargar el JSON");
+                
+                const data = await response.json();
+                const miDiccionario = data.diccionario;
+
+                // Desordenamos tu lista y armamos el juego
+                const shuffled = miDiccionario.sort(() => 0.5 - Math.random());
+                words = buildWords(shuffled);
+
+                if (!words.length) {
+                    throw new Error("El archivo JSON está vacío o mal formateado");
                 }
 
-                sourceWords = await response.json();
-            } catch (error) {
-                console.error('Error cargando el diccionario, se usarán palabras de respaldo:', error);
-            }
-
-            words = buildWords(sourceWords);
-
-            if (!words.length) {
-                document.getElementById('loading').textContent = 'No se pudieron generar palabras para jugar.';
-                return;
-            }
-
-            try {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('game-container').style.display = 'flex';
                 buildGrid();
+
             } catch (error) {
-                console.error('Error construyendo la grilla:', error);
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('loading').textContent = 'Hubo un error armando la grilla. ¡Intenta recargar la página!';
-                document.getElementById('game-container').style.display = 'none';
+                console.error("Error consultando la API local:", error);
+                document.getElementById('loading').textContent = "Hubo un error cargando las palabras. ¡Revisa tu archivo JSON!";
             }
         }
 
@@ -257,7 +250,7 @@
             words = placedWords;
 
             if (!words.length) {
-                throw new Error('No fue posible ubicar palabras en la grilla.');
+                console.error('No fue posible ubicar palabras en la grilla.');
             }
 
             const letters = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
@@ -310,13 +303,12 @@
                 }
                 attempts++;
             }
-
             return placed;
         }
 
         function renderGrid() {
             const gridElement = document.getElementById('word-search');
-            gridElement.innerHTML = ''; // Limpiar grilla por si acaso
+            gridElement.innerHTML = ''; 
 
             for (let r = 0; r < gridSize; r++) {
                 for (let c = 0; c < gridSize; c++) {
@@ -344,7 +336,6 @@
             words.forEach((w, index) => {
                 const li = document.createElement('li');
                 li.id = `word-li-${index}`;
-                // Solo mostramos el significado para la palabra personalizada
                 if(w.word === "TEXIA") {
                     li.innerHTML = `<span class="game-word">${w.word}</span> - ${w.meaning}`;
                 } else {
@@ -387,7 +378,6 @@
             document.getElementById('win-modal').style.display = 'none';
         }
 
-        // Ejecutamos la función de inicio al cargar el script
         initGame();
     </script>
 </body>
