@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sopa de Letras para Texia</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #fdf6e3;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #d35400;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            font-style: italic;
+            margin-bottom: 20px;
+            color: #7f8c8d;
+        }
+        #word-search {
+            display: grid;
+            grid-template-columns: repeat(12, 35px);
+            grid-template-rows: repeat(12, 35px);
+            gap: 2px;
+            background-color: #bdc3c7;
+            padding: 2px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .cell {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 4px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .cell.selected {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        .cell.found-letter {
+            background-color: #27ae60;
+            color: #fff;
+        }
+        .word-list-container {
+            margin-top: 20px;
+            background: #fff;
+            padding: 15px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-width: 250px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: center;
+        }
+        li {
+            font-size: 1.1rem;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+        }
+        .game-word {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .found-word {
+            text-decoration: line-through;
+            color: #bdc3c7;
+            opacity: 0.6;
+        }
+        .refresh-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #fff;
+            background-color: #d35400;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .refresh-btn:hover {
+            background-color: #e67e22;
+        }
+        #loading {
+            font-size: 1.2rem;
+            color: #d35400;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .modal-content h2 {
+            color: #e74c3c;
+            margin-top: 0;
+            font-size: 2rem;
+        }
+        .modal-content p {
+            font-size: 1.2rem;
+            color: #555;
+            line-height: 1.5;
+        }
+        .close-modal-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #fff;
+            background-color: #27ae60;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sopa de Letras 🤭</h1>
+    <p class="subtitle">Encuentra las palabras escondidas</p>
+
+    <div id="loading">Cargando nuevas palabras desde el diccionario...</div>
+
+    <div id="game-container" style="display: none; flex-direction: column; align-items: center;">
+        <div id="word-search"></div>
+
+        <div class="word-list-container">
+            <h3>Palabras a encontrar:</h3>
+            <ul id="word-list"></ul>
+        </div>
+
+        <button class="refresh-btn" onclick="location.reload()">¡Jugar de nuevo!</button>
+    </div>
+
+    <div id="win-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>¡Lo lograste! ❤️</h2>
+            <p>Encontraste todas las palabras.<br><br>¡Te quiero muchísimo, Texia!</p>
+            <button class="close-modal-btn" onclick="closeModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        const gridSize = 12;
+        let words = [];
+        let grid = [];
+        let cellElements = [];
+        const fallbackWords = ["CARIÑO", "ABRAZO", "RISA", "FELIZ", "BESO", "LUNA"];
+
+        function buildWords(rawWords) {
+            const list = Array.isArray(rawWords) ? rawWords : [];
+            const unique = new Set();
+
+            const processed = list
+                .filter(word => typeof word === 'string')
+                .map(word => word.trim())
+                .filter(Boolean)
+                .map(word => word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase())
+                .map(word => word.replace(/[^A-ZÑ]/g, ''))
+                .filter(word => word.length >= 3)
+                .map(word => (word.length > 10 ? word.substring(0, 10) : word))
+                .filter(word => {
+                    if (unique.has(word)) return false;
+                    unique.add(word);
+                    return true;
+                })
+                .slice(0, 6)
+                .map(word => ({ word, meaning: 'Diccionario', cells: [], found: false }));
+
+            if (!unique.has('TEXIA')) {
+                processed.push({ word: 'TEXIA', meaning: 'Mi polola hermosa', cells: [], found: false });
+            }
+
+            return processed;
+        }
+
+        // Función principal para iniciar el juego consultando la API en español
+        async function initGame() {
+            let sourceWords = fallbackWords;
+
+            try {
+                const response = await fetch('https://clientes.api.greenborn.com.ar/public-random-word?c=5');
+                if (!response.ok) {
+                    throw new Error(`Respuesta no válida: ${response.status}`);
+                }
+
+                sourceWords = await response.json();
+            } catch (error) {
+                console.error('Error cargando el diccionario, se usarán palabras de respaldo:', error);
+            }
+
+            words = buildWords(sourceWords);
+
+            if (!words.length) {
+                document.getElementById('loading').textContent = 'No se pudieron generar palabras para jugar.';
+                return;
+            }
+
+            try {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('game-container').style.display = 'flex';
+                buildGrid();
+            } catch (error) {
+                console.error('Error construyendo la grilla:', error);
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('loading').textContent = 'Hubo un error armando la grilla. ¡Intenta recargar la página!';
+                document.getElementById('game-container').style.display = 'none';
+            }
+        }
+
+        function buildGrid() {
+            grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(''));
+            cellElements = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
+
+            const placedWords = [];
+            words.forEach(wordObj => {
+                wordObj.cells = [];
+                wordObj.found = false;
+                if (placeWord(wordObj)) {
+                    placedWords.push(wordObj);
+                }
+            });
+            words = placedWords;
+
+            if (!words.length) {
+                throw new Error('No fue posible ubicar palabras en la grilla.');
+            }
+
+            const letters = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (grid[r][c] === '') {
+                        grid[r][c] = letters.charAt(Math.floor(Math.random() * letters.length));
+                    }
+                }
+            }
+
+            renderGrid();
+            renderWordList();
+        }
+
+        function placeWord(wordObj) {
+            let placed = false;
+            const word = wordObj.word;
+            let attempts = 0;
+            
+            while (!placed && attempts < 200) {
+                const isHorizontal = Math.random() > 0.5;
+                const row = Math.floor(Math.random() * gridSize);
+                const col = Math.floor(Math.random() * gridSize);
+
+                if (isHorizontal && col + word.length <= gridSize) {
+                    let canPlace = true;
+                    for (let i = 0; i < word.length; i++) {
+                        if (grid[row][col + i] !== '' && grid[row][col + i] !== word[i]) { canPlace = false; break; }
+                    }
+                    if (canPlace) {
+                        for (let i = 0; i < word.length; i++) {
+                            grid[row][col + i] = word[i];
+                            wordObj.cells.push({r: row, c: col + i});
+                        }
+                        placed = true;
+                    }
+                } else if (!isHorizontal && row + word.length <= gridSize) {
+                    let canPlace = true;
+                    for (let i = 0; i < word.length; i++) {
+                        if (grid[row + i][col] !== '' && grid[row + i][col] !== word[i]) { canPlace = false; break; }
+                    }
+                    if (canPlace) {
+                        for (let i = 0; i < word.length; i++) {
+                            grid[row + i][col] = word[i];
+                            wordObj.cells.push({r: row + i, c: col});
+                        }
+                        placed = true;
+                    }
+                }
+                attempts++;
+            }
+
+            return placed;
+        }
+
+        function renderGrid() {
+            const gridElement = document.getElementById('word-search');
+            gridElement.innerHTML = ''; // Limpiar grilla por si acaso
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.textContent = grid[r][c];
+                    
+                    cell.addEventListener('click', () => {
+                        if(!cell.classList.contains('found-letter')) {
+                            cell.classList.toggle('selected');
+                            checkWords();
+                        }
+                    });
+                    
+                    cellElements[r][c] = cell;
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        function renderWordList() {
+            const wordListElement = document.getElementById('word-list');
+            wordListElement.innerHTML = '';
+
+            words.forEach((w, index) => {
+                const li = document.createElement('li');
+                li.id = `word-li-${index}`;
+                // Solo mostramos el significado para la palabra personalizada
+                if(w.word === "TEXIA") {
+                    li.innerHTML = `<span class="game-word">${w.word}</span> - ${w.meaning}`;
+                } else {
+                    li.innerHTML = `<span class="game-word">${w.word}</span>`;
+                }
+                wordListElement.appendChild(li);
+            });
+        }
+
+        function checkWords() {
+            let allFound = true;
+
+            words.forEach((w, index) => {
+                if (w.found) return;
+
+                const allSelected = w.cells.every(pos => {
+                    return cellElements[pos.r][pos.c].classList.contains('selected') || 
+                           cellElements[pos.r][pos.c].classList.contains('found-letter');
+                });
+
+                if (allSelected) {
+                    w.found = true;
+                    document.getElementById(`word-li-${index}`).classList.add('found-word');
+                    
+                    w.cells.forEach(pos => {
+                        cellElements[pos.r][pos.c].classList.remove('selected');
+                        cellElements[pos.r][pos.c].classList.add('found-letter');
+                    });
+                } else {
+                    allFound = false;
+                }
+            });
+
+            if (allFound) {
+                setTimeout(() => { document.getElementById('win-modal').style.display = 'flex'; }, 400);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('win-modal').style.display = 'none';
+        }
+
+        // Ejecutamos la función de inicio al cargar el script
+        initGame();
+    </script>
+</body>
+</html>
