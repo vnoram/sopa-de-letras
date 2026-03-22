@@ -185,22 +185,33 @@
             const unique = new Set();
 
             const processed = list
-                .filter(word => typeof word === 'string')
-                .map(word => word.trim())
-                .filter(Boolean)
-                .map(word => word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase())
-                .map(word => word.replace(/[^A-ZÑ]/g, ''))
-                .filter(word => word.length >= 3)
-                .map(word => (word.length > 10 ? word.substring(0, 10) : word))
-                .filter(word => {
-                    if (unique.has(word)) return false;
-                    unique.add(word);
+                // Filtramos para asegurarnos de que el JSON nos entregue objetos con "palabra" y "significado"
+                .filter(item => item && typeof item.palabra === 'string')
+                .map(item => ({
+                    palabraRaw: item.palabra.trim(),
+                    significado: item.significado || 'Palabra poética'
+                }))
+                .filter(item => item.palabraRaw)
+                .map(item => ({
+                    ...item,
+                    // Limpiamos la palabra para la sopa de letras (quitamos tildes y mayúsculas)
+                    cleanWord: item.palabraRaw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-ZÑ]/g, '')
+                }))
+                .filter(item => item.cleanWord.length >= 3)
+                .map(item => ({
+                    ...item,
+                    cleanWord: item.cleanWord.length > 10 ? item.cleanWord.substring(0, 10) : item.cleanWord
+                }))
+                .filter(item => {
+                    if (unique.has(item.cleanWord)) return false;
+                    unique.add(item.cleanWord);
                     return true;
                 })
-                .slice(0, 5) // Toma 5 palabras aleatorias de tu JSON
-                .map(word => ({ word, meaning: 'Palabra poética', cells: [], found: false }));
+                .slice(0, 5) // Toma 5 palabras aleatorias
+                // Aquí enlazamos la palabra limpia con su significado exacto para la pantalla
+                .map(item => ({ word: item.cleanWord, meaning: item.significado, cells: [], found: false }));
 
-            // Siempre agregamos la palabra especial al final
+            // Siempre agregamos a Texia al final, garantizado.
             if (!unique.has('TEXIA')) {
                 processed.push({ word: 'TEXIA', meaning: 'Mi polola hermosa', cells: [], found: false });
             }
@@ -335,11 +346,11 @@
             words.forEach((w, index) => {
                 const li = document.createElement('li');
                 li.id = `word-li-${index}`;
-                if(w.word === "TEXIA") {
-                    li.innerHTML = `<span class="game-word">${w.word}</span> - ${w.meaning}`;
-                } else {
-                    li.innerHTML = `<span class="game-word">${w.word}</span>`;
-                }
+                
+                // Ahora le decimos que imprima TODAS las palabras con su significado, 
+                // y le damos un toque visual más sutil al texto de la definición
+                li.innerHTML = `<span class="game-word">${w.word}</span>: <span style="font-size: 0.9em; color: #555; font-style: italic;">${w.meaning}</span>`;
+                
                 wordListElement.appendChild(li);
             });
         }
