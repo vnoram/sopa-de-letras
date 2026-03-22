@@ -180,7 +180,7 @@
         let grid = [];
         let cellElements = [];
 
-        function buildWords(rawWords) {
+       function buildWords(rawWords) {
             const list = Array.isArray(rawWords) ? rawWords : [];
             const unique = new Set();
 
@@ -200,6 +200,7 @@
                 .slice(0, 5) // Toma 5 palabras de tu JSON
                 .map(word => ({ word, meaning: 'Palabra poética', cells: [], found: false }));
 
+            // Siempre agregamos a Texia al final
             if (!unique.has('TEXIA')) {
                 processed.push({ word: 'TEXIA', meaning: 'Mi polola hermosa', cells: [], found: false });
             }
@@ -250,7 +251,7 @@
             words = placedWords;
 
             if (!words.length) {
-                console.error('No fue posible ubicar palabras en la grilla.');
+                throw new Error('No fue posible ubicar palabras en la grilla.');
             }
 
             const letters = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
